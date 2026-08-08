@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
 
@@ -536,15 +537,10 @@ with center2:
     )
 
 # ==========================
-# Prediction Section
+# Prediction
 # ==========================
 
-
-st.write("")
-
-
 if st.button("🔍 Predict Stroke Risk"):
-
 
     # ==========================
     # Create Input DataFrame
@@ -575,20 +571,75 @@ if st.button("🔍 Predict Stroke Risk"):
     })
 
 
+    # ==========================
+    # SAME ENCODING AS NOTEBOOK
+    # ==========================
+
+    input_data["gender"] = input_data["gender"].map({
+        "Male": 0,
+        "Female": 1
+    })
+
+    input_data["ever_married"] = input_data["ever_married"].map({
+        "No": 0,
+        "Yes": 1
+    })
+
 
     # ==========================
-    # Same Preprocessing
+    # SAME ONE-HOT ENCODING
+    # Notebook used:
+    # pd.get_dummies(..., drop_first=True)
     # ==========================
 
-    input_data = pd.get_dummies(input_data)
+    input_data = pd.get_dummies(
+        input_data,
+        columns=[
+            "work_type",
+            "Residence_type",
+            "smoking_status"
+        ],
+        drop_first=True
+    )
 
 
+    # ==========================
+    # Convert Boolean to Integer
+    # ==========================
+
+    bool_cols = input_data.select_dtypes(
+        include="bool"
+    ).columns
+
+    input_data[bool_cols] = (
+        input_data[bool_cols].astype(int)
+    )
+
+
+    # ==========================
+    # SAME LOG TRANSFORMATION
+    # Notebook:
+    # avg_glucose_level
+    # bmi
+    # ==========================
+
+    input_data["avg_glucose_level"] = np.log1p(
+        input_data["avg_glucose_level"]
+    )
+
+    input_data["bmi"] = np.log1p(
+        input_data["bmi"]
+    )
+
+
+    # ==========================
+    # SAME FEATURE ORDER
+    # ==========================
 
     input_data = input_data.reindex(
         columns=features,
         fill_value=0
     )
-
 
 
     # ==========================
@@ -600,20 +651,17 @@ if st.button("🔍 Predict Stroke Risk"):
     )
 
 
-
     # ==========================
     # Prediction
     # ==========================
 
     prediction = model.predict(
         input_scaled
-    )
-
+    )[0]
 
     probability = model.predict_proba(
         input_scaled
     )[0][1]
-
 
 
     confidence = max(
@@ -622,21 +670,16 @@ if st.button("🔍 Predict Stroke Risk"):
     )
 
 
-
     # ==========================
     # Result
     # ==========================
 
     st.divider()
 
-    st.subheader(
-        "📊 Prediction Result"
-    )
+    st.subheader("📊 Prediction Result")
 
 
-
-    if prediction[0] == 1:
-
+    if prediction == 1:
 
         risk = "High Risk"
 
@@ -644,12 +687,10 @@ if st.button("🔍 Predict Stroke Risk"):
             "⚠️ Stroke Risk Detected"
         )
 
-
         interpretation = (
-            "The patient has a higher predicted "
+            "The model predicts a higher "
             "risk of stroke."
         )
-
 
         recommendation = (
             "Medical consultation and further "
@@ -657,23 +698,18 @@ if st.button("🔍 Predict Stroke Risk"):
         )
 
 
-
     else:
 
-
         risk = "Low Risk"
-
 
         st.success(
             "✅ Low Stroke Risk"
         )
 
-
         interpretation = (
-            "The patient has a lower predicted "
+            "The model predicts a lower "
             "risk of stroke."
         )
-
 
         recommendation = (
             "Continue healthy habits and "
@@ -681,13 +717,11 @@ if st.button("🔍 Predict Stroke Risk"):
         )
 
 
-
     # ==========================
     # Metrics
     # ==========================
 
     col1, col2, col3 = st.columns(3)
-
 
 
     with col1:
@@ -698,50 +732,40 @@ if st.button("🔍 Predict Stroke Risk"):
         )
 
 
-
     with col2:
 
         st.metric(
             "Stroke Probability",
-            f"{probability*100:.2f}%"
+            f"{probability * 100:.2f}%"
         )
-
 
 
     with col3:
 
         st.metric(
             "Prediction Confidence",
-            f"{confidence*100:.2f}%"
+            f"{confidence * 100:.2f}%"
         )
-
 
 
     # ==========================
     # Probability Chart
     # ==========================
 
-
     st.subheader(
         "📈 Risk Probability Analysis"
     )
 
-
     probability_df = pd.DataFrame({
 
-        "Risk Category":
-
-        [
+        "Risk Category": [
             "No Stroke Risk",
             "Stroke Risk"
         ],
 
-
-        "Probability (%)":
-
-        [
-            (1-probability)*100,
-            probability*100
+        "Probability (%)": [
+            (1 - probability) * 100,
+            probability * 100
         ]
 
     })
@@ -754,11 +778,9 @@ if st.button("🔍 Predict Stroke Risk"):
     )
 
 
-
     # ==========================
     # Patient Summary
     # ==========================
-
 
     st.subheader(
         "📝 Patient Information Summary"
@@ -766,110 +788,88 @@ if st.button("🔍 Predict Stroke Risk"):
 
     summary = pd.DataFrame({
 
-        "Feature":
-            [
-                "Age",
-                "Gender",
-                "BMI",
-                "Hypertension",
-                "Heart Disease",
-                "Glucose Level",
-                "Ever Married",
-                "Work Type",
-                "Residence Type",
-                "Smoking Status"
-            ],
+        "Feature": [
+            "Age",
+            "Gender",
+            "BMI",
+            "Hypertension",
+            "Heart Disease",
+            "Glucose Level",
+            "Ever Married",
+            "Work Type",
+            "Residence Type",
+            "Smoking Status"
+        ],
 
-        "Value":
-            [
-                str(age),
-                str(gender),
-                str(bmi),
-                "Yes" if hypertension else "No",
-                "Yes" if heart_disease else "No",
-                str(glucose),
-                str(married),
-                str(work_type),
-                str(residence),
-                str(smoking)
-            ]
+        "Value": [
+            str(age),
+            str(gender),
+            str(bmi),
+
+            "Yes" if hypertension == 1
+            else "No",
+
+            "Yes" if heart_disease == 1
+            else "No",
+
+            str(glucose),
+            str(married),
+            str(work_type),
+            str(residence),
+            str(smoking)
+        ]
 
     })
 
+
     st.dataframe(
         summary,
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
-
 
 
     # ==========================
     # Assessment Summary
     # ==========================
 
-
     st.subheader(
         "📌 Assessment Summary"
     )
 
-
     st.markdown(
-    f"""
+        f"""
+        <div class="card">
 
-    <div class="card">
+        <p>
+        <b>Prediction:</b>
+        {risk}
+        </p>
 
+        <p>
+        <b>Stroke Probability:</b>
+        {probability * 100:.2f}%
+        </p>
 
-    <p>
+        <p>
+        <b>Confidence:</b>
+        {confidence * 100:.2f}%
+        </p>
 
-    <b>Prediction:</b>
-    {risk}
+        <p>
+        <b>Interpretation:</b>
+        {interpretation}
+        </p>
 
-    </p>
+        <p>
+        <b>Recommendation:</b>
+        {recommendation}
+        </p>
 
-
-    <p>
-
-    <b>Stroke Probability:</b>
-    {probability*100:.2f}%
-
-    </p>
-
-
-    <p>
-
-    <b>Confidence:</b>
-    {confidence*100:.2f}%
-
-    </p>
-
-
-    <p>
-
-    <b>Interpretation:</b>
-    {interpretation}
-
-    </p>
-
-
-    <p>
-
-    <b>Recommendation:</b>
-    {recommendation}
-
-    </p>
-
-
-    </div>
-
-
-    """,
-
-    unsafe_allow_html=True
-
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-
-
 
 # ==========================
 # Footer
